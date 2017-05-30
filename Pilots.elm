@@ -3,10 +3,11 @@ module Pilots exposing (main, mainForView, view, Model, Msg)
 import Html exposing (..)
 import Html.Attributes  exposing (..)
 import Http
+import Dict
 import Json.Decode exposing (Decoder, map8, string, list, nullable, int, field)
 import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
 import Bootstrap.Form as Form
--- import Bootstrap.Form.Input as Input
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Button as Button
 import Bootstrap.Alert as Alert
@@ -88,7 +89,7 @@ lookupPilotNames : String -> Cmd Msg
 lookupPilotNames names =
    let
     url =
-      "http://localhost:3000/rlh/pilots"
+      "https://dorfl.gmeiner.me/rlh/pilots"
     body =
       Http.multipartBody [ Http.stringPart "names" names ]
 
@@ -102,10 +103,10 @@ lookupPilotNames names =
 view : Model -> Html Msg
 view model =
   div []
-    [ Grid.container []
+    [ Grid.containerFluid []
       [ h1 [] [ text "Pilots" ]
       , Grid.row []
-        [ Grid.col []
+        [ Grid.col [Col.xs4]
             [ Form.form []
               [ Form.group [ ]
                 [ Form.label [ for "pilotNamesArea" ] [ text "Pilot Names" ]
@@ -117,7 +118,7 @@ view model =
               ]
               , Button.button [ Button.primary, Button.onClick LookupPilotNames] [ text "Submit" ]
             ]
-        , Grid.col [] (prependError model.pilotInfosError (viewPilotInfos model.pilotInfos))
+        , Grid.col [Col.xs8] (prependError model.pilotInfosError (viewInfos model.pilotInfos))
         ]
       ]
     ]
@@ -132,32 +133,59 @@ prependError err list =
       Alert.danger [ text x ] :: list
 
 
+viewInfos: List PilotInfo -> List (Html Msg)
+viewInfos infos =
+  if List.isEmpty infos
+  then [ Alert.info [ text "No result." ] ]
+  else
+    [ h2 [] [ text "Pilots" ]
+    , viewPilotInfos infos
+    ]
 
-viewPilotInfos : List PilotInfo -> List (Html Msg)
+viewPilotInfos : List PilotInfo -> Html Msg
 viewPilotInfos infos =
-  [ if (List.isEmpty infos)
-    then
-      p [] [ text "No result." ]
-    else
-      table []
+  table [ style [ ("width", "100%") ] ]
         [ thead []
             [ th [] [ text "Name" ]
-            , th [] [ text "Corporation" ]
-            , th [] [ text "Alliance" ]
+            , th [] [ text "Corp/Alliance"]
             , th [] [ text "Faction" ]
             , th [] [ text "Recent Kills" ]
             ]
         , tbody []
-            (List.map viewPilotInfo infos)
+            (List.map (viewPilotInfo <| corpCounts infos) infos)
         ]
-  ]
 
-viewPilotInfo : PilotInfo -> Html Msg
-viewPilotInfo info =
+viewPilotInfo : Dict.Dict String Int -> PilotInfo -> Html Msg
+viewPilotInfo corps info =
   tr []
-    [ td [] [ text info.characterName ]
-    , td [] [ text info.corporationName ]
-    , td [] [ text (Maybe.withDefault "" info.allianceName) ]
+    [ td [] [ zkillLink info ]
+    , td [] [ text <| allianceOrCorpWithCount corps info ]
     , td [] [ text (Maybe.withDefault "" info.factionName) ]
     , td [] [ text (toString info.recentKills) ]
     ]
+
+zkillLink : PilotInfo -> Html a
+zkillLink info =
+  a [ href <| "https://zkillboard.com/character/" ++ toString info.characterID
+    , target "_blank" ]
+    [ text info.characterName ]
+
+allianceOrCorpWithCount : Dict.Dict String Int -> PilotInfo -> String
+allianceOrCorpWithCount corps info =
+  let name = allianceOrCorp info
+      cnt = Maybe.withDefault 1 <| Dict.get name corps
+  in name ++ " (" ++ toString cnt ++ ")"
+
+allianceOrCorp : PilotInfo -> String
+allianceOrCorp info =
+  case info.allianceName of
+    Nothing -> info.corporationName
+    Just x -> x
+
+corpCounts : List PilotInfo -> Dict.Dict String Int
+corpCounts infos =
+  let incKey v = case v of
+        Nothing -> Just 1
+        Just x -> Just <| x + 1
+      corps = List.map allianceOrCorp infos
+  in List.foldl (\k d -> Dict.update k incKey d) Dict.empty corps
