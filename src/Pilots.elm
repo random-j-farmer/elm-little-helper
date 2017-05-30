@@ -89,7 +89,7 @@ lookupPilotNames : String -> Cmd Msg
 lookupPilotNames names =
    let
     url =
-      "https://dorfl.gmeiner.me/rlh/pilots"
+      "http://localhost:3000/rlh/pilots"
     body =
       Http.multipartBody [ Http.stringPart "names" names ]
 

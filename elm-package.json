@@ -1,10 +1,10 @@
 {
-    "version": "1.0.0",
-    "summary": "helpful summary of your project, less than 80 characters",
+    "version": "0.1.0",
+    "summary": "Elm Frontend for Eve Pilot Info Lookup",
     "repository": "https://github.com/user/project.git",
     "license": "BSD3",
     "source-directories": [
-        "."
+        "src"
     ],
     "exposed-modules": [],
     "dependencies": {
