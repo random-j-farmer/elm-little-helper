@@ -1,0 +1,27 @@
+{
+  "name": "elm-little-helper",
+  "version": "0.1.0",
+  "description": "Elm Frontend for hs-little-helper",
+  "main": "elm.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/random-j-farmer/elm-little-helper.git"
+  },
+  "author": "Random J Farmer <random.j.farmer@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/random-j-farmer/elm-little-helper/issues"
+  },
+  "homepage": "https://github.com/random-j-farmer/elm-little-helper#readme",
+  "devDependencies": {
+    "cross-spawn": "^5.1.0",
+    "del": "^2.2.2",
+    "gulp": "^3.9.1",
+    "gulp-elm": "^0.7.2",
+    "gulp-replace": "^0.5.4",
+    "gulp-uglify": "^3.0.0",
+  }
+}

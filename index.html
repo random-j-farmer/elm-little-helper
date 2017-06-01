@@ -14,7 +14,9 @@
     <script src="elm.js"></script>
     <script>
       var node = document.getElementById('main');
-      var app = Elm.Pilots.embed(node);
+      var app = Elm.Pilots.embed(node, {
+        backendUrl: "http://localhost:3000/rlh/pilots"
+      });
     </script>
   </body>
 </html>

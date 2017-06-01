@@ -1,4 +1,4 @@
-module Pilots exposing (main, mainForView, view, Model, Msg)
+module Pilots exposing (main, mainForView, view, Model, Msg, Flags)
 
 import Html exposing (..)
 import Html.Attributes  exposing (..)
@@ -12,19 +12,24 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Button as Button
 import Bootstrap.Alert as Alert
 
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
   mainForView view
 
-mainForView: (Model -> Html Msg) -> Program Never Model Msg
+mainForView: (Model -> Html Msg) -> Program Flags Model Msg
 mainForView wrappedView =
-  Html.program { init = init, view = wrappedView, update = update, subscriptions = subscriptions }
+  Html.programWithFlags  { init = init, view = wrappedView, update = update, subscriptions = subscriptions }
 
 
 -- MODEL
 
+type alias Flags
+  = { backendUrl : String }
+
 type alias Model
-  = { pilotNames : String
+  = { flags : Flags
+    , lookupInProgress : Bool
+    , pilotNames : String
     , pilotInfos : List PilotInfo
     , pilotInfosError : Maybe String
     }
@@ -62,9 +67,9 @@ type Msg
   | LookupPilotNames
   | LookupPilotResult (Result Http.Error (List PilotInfo))
 
-init : (Model, Cmd Msg)
-init =
-  (Model "" [] Nothing, Cmd.none)
+init : Flags -> (Model, Cmd Msg)
+init flags =
+  (Model flags False "" [] Nothing, Cmd.none)
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
@@ -77,22 +82,30 @@ update msg model =
       ({ model | pilotNames = names }, Cmd.none)
 
     LookupPilotNames  ->
-      ({ model | pilotNames = "" }, lookupPilotNames model.pilotNames)
+      ( { model
+        | lookupInProgress = True
+        , pilotNames = ""}
+      , lookupPilotNames model.flags.backendUrl model.pilotNames)
 
     LookupPilotResult (Ok infos) ->
-      ({ model | pilotInfos = infos, pilotInfosError = Nothing }, Cmd.none)
+      ( { model
+        | lookupInProgress = False
+        , pilotInfos = infos
+        , pilotInfosError = Nothing }
+      , Cmd.none)
 
     LookupPilotResult (Err err) ->
-      ({ model | pilotInfos = [], pilotInfosError = Just (toString err) }, Cmd.none)
+      ( { model
+          | lookupInProgress = False
+          , pilotInfos = []
+          , pilotInfosError = Just (toString err) }
+      , Cmd.none)
 
-lookupPilotNames : String -> Cmd Msg
-lookupPilotNames names =
-   let
-    url =
-      "http://localhost:3000/rlh/pilots"
+lookupPilotNames : String -> String -> Cmd Msg
+lookupPilotNames url names =
+  let
     body =
       Http.multipartBody [ Http.stringPart "names" names ]
-
     request =
       Http.post url body (Json.Decode.list pilotInfoDecoder)
   in
@@ -116,31 +129,31 @@ view model =
                                     , Textarea.onInput PilotNames ]
                 ]
               ]
-              , Button.button [ Button.primary, Button.onClick LookupPilotNames] [ text "Submit" ]
+              , Button.button [ Button.primary
+                              , Button.disabled model.lookupInProgress
+                              , Button.onClick LookupPilotNames ]
+                              [ text "Submit" ]
             ]
-        , Grid.col [Col.xs8] (prependError model.pilotInfosError (viewInfos model.pilotInfos))
+        , Grid.col [Col.xs8]
+            <| Maybe.withDefault
+              (if List.isEmpty model.pilotInfos
+                then [ Alert.info [ text "No Result." ] ]
+                else viewInfos model.pilotInfos)
+              (Maybe.map viewError model.pilotInfosError)
         ]
       ]
     ]
 
-prependError : Maybe String -> List (Html Msg) -> List (Html Msg)
-prependError err list =
-  case err of
-    Nothing ->
-      list
-
-    Just x ->
-      Alert.danger [ text x ] :: list
+viewError : String -> List (Html Msg)
+viewError err =
+  [ Alert.danger [ text err ] ]
 
 
 viewInfos: List PilotInfo -> List (Html Msg)
 viewInfos infos =
-  if List.isEmpty infos
-  then [ Alert.info [ text "No result." ] ]
-  else
-    [ h2 [] [ text "Pilots" ]
-    , viewPilotInfos infos
-    ]
+  [ h2 [] [ text "Pilots" ]
+  , viewPilotInfos infos
+  ]
 
 viewPilotInfos : List PilotInfo -> Html Msg
 viewPilotInfos infos =
